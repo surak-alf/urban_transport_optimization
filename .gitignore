@@ -1,0 +1,18 @@
+# Ignore the data directory
+data/
+
+# Ignore the virtual environment
+.venv/
+
+# Ignore Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore VS Code settings
+.vscode/
+
+# Ignore temporary files
+*.log
+*.tmp
