@@ -1,0 +1,13 @@
+numpy
+pandas
+networkx
+geopandas
+shapely
+plotly
+dash
+dash-leaflet
+scipy
+python-igraph
+scikit-learn
+tqdm
+pyyaml
