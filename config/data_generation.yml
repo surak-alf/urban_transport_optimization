@@ -1,0 +1,6 @@
+seed: 42
+num_stops: 50
+num_routes: 15
+num_vehicles: 20
+city_center: [40.7128, -74.0060]  # New York coordinates
+city_radius_km: 10
