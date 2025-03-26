@@ -32,7 +32,7 @@ def run_optimization():
 def run_dashboard():
     from app.dashboard import app
     print("Starting dashboard...")
-    app.run_server(debug=True)
+    app.run(debug=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Urban Transport Optimization Pipeline")

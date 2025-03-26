@@ -1,7 +1,7 @@
 import pandas as pd
 import geopandas as gpd
-import numpy as np
 import networkx as nx
+import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 import pickle
 
@@ -33,24 +33,21 @@ class TransportDataPreprocessor:
                              elevation=stop['elevation'],
                              is_terminal=stop['is_terminal'])
         
-        # Add edges (road segments)
+        # Calculate average traffic for each road segment
+        avg_traffic = self.traffic_data.groupby('road_id')['traffic_level'].mean().reset_index()
+        
+        # Add edges with traffic-weighted attributes
         for _, road in self.road_network.iterrows():
-            # Calculate edge weights
+            # Get traffic data for this road
+            road_traffic = avg_traffic[avg_traffic['road_id'] == road['road_id']]
+            traffic_level = road_traffic['traffic_level'].values[0] if not road_traffic.empty else 0.5
+            
+            # Calculate composite weight considering multiple factors
             base_weight = road['length_km']
+            traffic_factor = 1 + traffic_level * 2  # More traffic = worse
+            gradient_factor = 1 + abs(road['gradient']) * 10  # Steeper = worse
             
-            # Get average traffic for this road
-            avg_traffic = self.traffic_data[
-                self.traffic_data['road_id'] == road['road_id']
-            ]['traffic_level'].mean()
-            
-            # Adjust weight by traffic (higher traffic = worse)
-            traffic_factor = 1 + avg_traffic * 2
-            
-            # Adjust weight by gradient (steeper = worse)
-            gradient_factor = 1 + abs(road['gradient']) * 10
-            
-            # Combined weight
-            weight = base_weight * traffic_factor * gradient_factor
+            composite_weight = base_weight * traffic_factor * gradient_factor
             
             self.graph.add_edge(road['start_stop'], road['end_stop'],
                               road_id=road['road_id'],
@@ -58,7 +55,8 @@ class TransportDataPreprocessor:
                               lanes=road['lanes'],
                               speed_limit=road['speed_limit'],
                               gradient=road['gradient'],
-                              weight=weight)
+                              traffic_level=traffic_level,
+                              weight=composite_weight)
     
     def preprocess_fuel_data(self):
         """Preprocess fuel consumption data"""
@@ -94,17 +92,15 @@ class TransportDataPreprocessor:
     def normalize_data(self):
         """Normalize data for ACO algorithm"""
         # Normalize edge weights to [0, 1] range
-        weights = nx.get_edge_attributes(self.graph, 'weight').values()
+        weights = np.array([data['weight'] for _, _, data in self.graph.edges(data=True)])
+        weights = weights.reshape(-1, 1)  # Convert to 2D array
+        
         scaler = MinMaxScaler()
-        normalized_weights = scaler.fit_transform(np.array(list(weights)).reshape(-1)
+        normalized_weights = scaler.fit_transform(weights).flatten()
         
         # Update graph with normalized weights
         for i, (u, v) in enumerate(self.graph.edges()):
             self.graph[u][v]['normalized_weight'] = normalized_weights[i]
-        
-        # Normalize route stats
-        features = ['fuel_efficiency', 'passengers_per_km', 'fuel_per_passenger_km']
-        self.route_stats[features] = scaler.fit_transform(self.route_stats[features])
     
     def save_processed_data(self):
         """Save processed data to files"""
@@ -151,6 +147,6 @@ class TransportDataPreprocessor:
         
         return self.graph, self.route_stats
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     preprocessor = TransportDataPreprocessor()
     graph, route_stats = preprocessor.run_pipeline()
